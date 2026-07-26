@@ -19,7 +19,7 @@ from litert_studio.conversion.quantization import quantization_policies
 from litert_studio.conversion.reference import capture_reference_suite
 from litert_studio.conversion.tensors import inspect_export_compatibility
 from litert_studio.core.compatibility import CompatibilityRegistry
-from litert_studio.core.devices import discover_android_devices
+from litert_studio.core.devices import discover_android_devices, install_android_apk
 from litert_studio.core.errors import StudioError
 from litert_studio.core.model_import import import_huggingface_model
 from litert_studio.core.models import JobState
@@ -123,6 +123,14 @@ def create_app(workspace: Path | None = None):  # type: ignore[no-untyped-def]
     @app.get("/api/devices/android")
     def android_devices() -> dict[str, Any]:
         return discover_android_devices().to_dict()
+
+    @app.post("/api/actions/install-android-app")
+    def install_android_action(payload: dict[str, Any]) -> dict[str, Any]:
+        serial = payload.get("serial")
+        return install_android_apk(
+            authorized(str(payload.get("apk", "")), must_exist=True),
+            str(serial) if serial else None,
+        )
 
     @app.get("/api/compatibility")
     def compatibility_results(limit: int = 100) -> list[dict[str, Any]]:

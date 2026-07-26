@@ -28,6 +28,14 @@ same discovery information.
 Device discovery is a readiness check; on-device execution and profiling remain a later
 milestone. It does not copy models or run commands on a connected device.
 
+The reference application can be installed from the Deploy page or with:
+
+```bash
+litert-studio install-android-app \
+  --apk android/reference-app/app/build/outputs/apk/debug/app-debug.apk \
+  --serial DEVICE_SERIAL
+```
+
 ## Compatibility history
 
 Benchmarks launched through the GUI and LiteRT token-parity checks are stored in

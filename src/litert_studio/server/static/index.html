@@ -151,6 +151,11 @@
             <article class="panel">
               <div class="panel-head"><h3>Android devices</h3><span class="status" id="adb-status">Checking</span></div>
               <div id="android-devices"><p class="empty">Looking for Android platform-tools…</p></div>
+              <form class="api-form top-gap" data-endpoint="/api/actions/install-android-app">
+                <label>Debug APK<input name="apk" placeholder="android/reference-app/app/build/outputs/apk/debug/app-debug.apk" required></label>
+                <label>Device serial (optional)<input name="serial"></label>
+                <button>Install or update app</button>
+              </form>
             </article>
           </div>
           <div class="panel top-gap"><div class="panel-head"><h3>Compatibility history</h3><button id="reload-compatibility">Reload</button></div><div class="jobs-list" id="compatibility-list"><p class="empty">No results recorded yet.</p></div></div>

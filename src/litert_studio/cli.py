@@ -13,7 +13,7 @@ from litert_studio.conversion.litert_runtime import validate_litert_tokens
 from litert_studio.conversion.reference import capture_reference_suite
 from litert_studio.conversion.tensors import inspect_gemma_mapping
 from litert_studio.core.config import load_versioned_config
-from litert_studio.core.devices import discover_android_devices
+from litert_studio.core.devices import discover_android_devices, install_android_apk
 from litert_studio.core.errors import StudioError
 from litert_studio.core.models import Project
 from litert_studio.core.packaging import create_bundle, verify_bundle
@@ -83,6 +83,12 @@ def parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--iterations", type=int, default=3)
     benchmark.add_argument("--max-output-tokens", type=int, default=16)
     commands.add_parser("android-devices", help="Discover Android devices through adb")
+    install_android = commands.add_parser(
+        "install-android-app",
+        help="Install or update the LiteRT Studio reference APK through adb",
+    )
+    install_android.add_argument("--apk", type=Path, required=True)
+    install_android.add_argument("--serial")
     package = commands.add_parser(
         "package-artifact",
         help="Create a deterministic, checksummed release bundle",
@@ -187,6 +193,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             import json
 
             print(json.dumps(discover_android_devices().to_dict(), indent=2))
+            return 0
+        if args.command == "install-android-app":
+            import json
+
+            print(json.dumps(install_android_apk(args.apk, args.serial), indent=2))
             return 0
         if args.command == "package-artifact":
             bundle = create_bundle(

@@ -3,7 +3,10 @@ from __future__ import annotations
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any
+
+from litert_studio.core.errors import ConfigurationError
 
 
 @dataclass(frozen=True)
@@ -71,3 +74,29 @@ def parse_adb_devices(output: str) -> tuple[AndroidDevice, ...]:
             )
         )
     return tuple(devices)
+
+
+def install_android_apk(apk: Path, serial: str | None = None) -> dict[str, Any]:
+    if not apk.is_file() or apk.suffix.lower() != ".apk":
+        raise ConfigurationError(f"Android package is not an APK file: {apk}")
+    adb = shutil.which("adb")
+    if adb is None:
+        raise ConfigurationError("Android platform-tools (adb) not found")
+    command = [adb]
+    if serial:
+        command.extend(("-s", serial))
+    command.extend(("install", "-r", str(apk.resolve())))
+    try:
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ConfigurationError(f"Unable to install Android app: {exc}") from exc
+    output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+    if result.returncode != 0:
+        raise ConfigurationError(output or "adb install failed")
+    return {"installed": True, "serial": serial, "apk": str(apk.resolve()), "output": output}

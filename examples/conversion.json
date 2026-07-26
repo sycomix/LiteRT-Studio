@@ -1,0 +1,23 @@
+{
+  "schema_version": "1",
+  "kind": "conversion",
+  "name": "gemma-demo-f16",
+  "source": "./models/gemma-demo",
+  "output": "./artifacts/gemma-demo-f16",
+  "adapter": "gemma-adapter",
+  "output_format": "litertlm",
+  "quantization": "dynamic_int8",
+  "quantization_recipe": "dynamic_wi8_afp32",
+  "prefill_lengths": [128, 256],
+  "cache_length": 1024,
+  "externalize_embedder": false,
+  "use_jinja_template": false,
+  "bundle_litert_lm": true,
+  "signatures": [
+    "prefill",
+    "decode"
+  ],
+  "operator_policy": "builtins-preferred",
+  "atol": 0.01,
+  "rtol": 0.01
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": "1",
+  "kind": "training",
+  "name": "tiny-random-gemma-lora-smoke",
+  "base_model": "./models/tiny-random-gemma",
+  "dataset": "./datasets/smoke.jsonl",
+  "output": "./artifacts/tiny-random-gemma-lora",
+  "method": "lora",
+  "epochs": 1,
+  "max_steps": 2,
+  "batch_size": 1,
+  "gradient_accumulation_steps": 1,
+  "max_sequence_length": 64,
+  "learning_rate": 0.0002,
+  "precision": "fp32",
+  "seed": 42,
+  "logging_steps": 1,
+  "save_steps": 1,
+  "resume_from_checkpoint": true,
+  "validation_split": 0.25,
+  "merge_adapter": false,
+  "lora": {
+    "rank": 4,
+    "alpha": 8,
+    "dropout": 0.0,
+    "target_modules": "auto"
+  }
+}

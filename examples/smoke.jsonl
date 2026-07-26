@@ -1,0 +1,4 @@
+{"text":"LiteRT runs machine learning models on edge devices."}
+{"text":"Question: What is model conversion? Answer: It transforms a trained model into a deployment format."}
+{"text":"LoRA fine-tunes a small set of adapter parameters."}
+{"text":"Question: Where should private data stay? Answer: Keep it local unless an upload is explicitly authorized."}

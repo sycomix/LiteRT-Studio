@@ -1,0 +1,28 @@
+{
+  "schema_version": "1",
+  "kind": "training",
+  "name": "gemma-demo-lora",
+  "base_model": "./models/gemma-demo",
+  "dataset": "./datasets/train.jsonl",
+  "output": "./artifacts/gemma-demo-lora",
+  "method": "lora",
+  "epochs": 1,
+  "batch_size": 1,
+  "gradient_accumulation_steps": 8,
+  "max_sequence_length": 2048,
+  "learning_rate": 0.0002,
+  "precision": "bf16",
+  "seed": 42,
+  "max_steps": -1,
+  "logging_steps": 1,
+  "save_steps": 50,
+  "resume_from_checkpoint": true,
+  "validation_split": 0.05,
+  "merge_adapter": false,
+  "lora": {
+    "rank": 16,
+    "alpha": 32,
+    "dropout": 0.05,
+    "target_modules": "auto"
+  }
+}

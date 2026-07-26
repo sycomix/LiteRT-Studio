@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LiteRT Studio</title>
+    <meta name="description" content="Local model fine-tuning and LiteRT conversion studio">
+    <link rel="stylesheet" href="/assets/studio.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside>
+        <div class="brand"><span class="mark">L</span><div>LiteRT <strong>Studio</strong></div></div>
+        <p class="eyebrow">LOCAL MODEL WORKBENCH</p>
+        <nav id="nav" aria-label="Studio workspaces">
+          <button class="active" data-view="overview">⌂ <span>Overview</span></button>
+          <button data-view="models">◇ <span>Models</span></button>
+          <button data-view="data">▤ <span>Data</span></button>
+          <button data-view="train">↗ <span>Train</span></button>
+          <button data-view="convert">⇄ <span>Convert</span></button>
+          <button data-view="validate">✓ <span>Validate</span></button>
+          <button data-view="deploy">⬡ <span>Deploy</span></button>
+          <button data-view="artifacts">▣ <span>Artifacts</span></button>
+          <button data-view="jobs">◷ <span>Jobs</span></button>
+        </nav>
+        <div class="runtime"><i></i><div><b>Local service</b><span id="health">Connecting…</span></div></div>
+      </aside>
+
+      <main>
+        <header>
+          <div><p class="eyebrow" id="section-label">WORKSPACE</p><h1 id="title">Model operations, in one place.</h1></div>
+          <button class="quiet" id="refresh">Refresh status</button>
+        </header>
+
+        <section class="view active" id="overview">
+          <div class="hero">
+            <div>
+              <span class="pill">LiteRT Torch + LiteRT-LM</span>
+              <h2>Fine-tune. Convert.<br><em>Ship to the edge.</em></h2>
+              <p>Bring a SafeTensors checkpoint, shape a reproducible training recipe, and export a verified LiteRT package without leaving your machine.</p>
+              <div class="actions"><button data-go="models">Add a model</button><button class="secondary" data-go="convert">Start conversion</button></div>
+            </div>
+            <div class="signal" aria-label="Pipeline status graphic">
+              <div class="orb o1">ST</div><div class="line"></div><div class="orb o2">LoRA</div><div class="line"></div><div class="orb o3">LiteRT</div>
+            </div>
+          </div>
+          <div class="stats">
+            <article><span>Supported families</span><strong id="family-count">—</strong><small>pinned exporter extensions</small></article>
+            <article><span>Accelerator</span><strong id="accelerator">—</strong><small id="accelerator-detail">probing local runtime</small></article>
+            <article><span>Quantization</span><strong id="quant-count">—</strong><small>verified exporter recipes</small></article>
+            <article><span>Recent jobs</span><strong id="job-count">0</strong><small>durable local history</small></article>
+          </div>
+          <div class="panel flow-panel"><div class="panel-head"><div><p class="eyebrow">END-TO-END</p><h3>Production path</h3></div><span class="status good">Ready</span></div>
+            <div class="flow"><div><b>01</b><strong>Inspect</strong><span>SafeTensors + tokenizer</span></div><div><b>02</b><strong>Fine-tune</strong><span>PEFT adapter</span></div><div><b>03</b><strong>Convert</strong><span>LiteRT-LM package</span></div><div><b>04</b><strong>Validate</strong><span>Token parity</span></div><div><b>05</b><strong>Package</strong><span>Reproducible bundle</span></div></div>
+          </div>
+        </section>
+
+        <section class="view" id="models">
+          <div class="section-intro"><div><p class="eyebrow">MODEL LIBRARY</p><h2>Bring a real checkpoint</h2><p>Import a pinned Hugging Face revision or inspect a model already inside this workspace.</p></div></div>
+          <div class="grid two">
+            <form class="panel api-form" data-endpoint="/api/models/import">
+              <div class="panel-head"><h3>Import from Hugging Face</h3><span class="status">Network</span></div>
+              <label>Repository<input name="repository" placeholder="google/gemma-2-2b"></label>
+              <label>Revision or commit<input name="revision" placeholder="main" required></label>
+              <button>Download pinned snapshot</button>
+            </form>
+            <form class="panel api-form" data-endpoint="/api/models/inspect">
+              <div class="panel-head"><h3>Inspect local model</h3><span class="status good">Header-only</span></div>
+              <label>Model directory<input name="path" placeholder="models/gemma-2-2b" required></label>
+              <p class="hint">Reads configuration and SafeTensors headers without loading weights.</p>
+              <button>Inspect compatibility</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="view" id="data">
+          <div class="section-intro"><div><p class="eyebrow">DATA QUALITY</p><h2>Validate before tokenization</h2><p>Fingerprint JSONL, count records, and catch malformed text or chat examples.</p></div></div>
+          <form class="panel api-form narrow" data-endpoint="/api/datasets/inspect">
+            <label>Dataset path<input name="path" placeholder="datasets/train.jsonl" required></label>
+            <button>Inspect dataset</button>
+          </form>
+        </section>
+
+        <section class="view" id="train">
+          <div class="section-intro"><div><p class="eyebrow">FINE-TUNING</p><h2>Build a reproducible recipe</h2><p>Plan first, then launch the exact same configuration as a durable background job.</p></div></div>
+          <form class="panel config-form" id="training-form">
+            <div class="form-grid">
+              <label>Base model<input name="base_model" placeholder="models/gemma" required></label>
+              <label>Training dataset<input name="dataset" placeholder="datasets/train.jsonl" required></label>
+              <label>Output directory<input name="output" placeholder="artifacts/my-adapter" required></label>
+              <label>Method<select name="method"><option>lora</option><option>qlora</option><option>full</option></select></label>
+              <label>Validation split<input name="validation_split" type="number" value="0.05" min="0.001" max="0.9" step="0.01"></label>
+              <label>Precision<select name="precision"><option>bf16</option><option>fp16</option><option>fp32</option></select></label>
+              <label>Epochs<input name="epochs" type="number" value="1" min="0.01" step="0.1"></label>
+              <label>Batch size<input name="batch_size" type="number" value="1" min="1"></label>
+              <label>Gradient accumulation<input name="gradient_accumulation_steps" type="number" value="8" min="1"></label>
+              <label>Sequence length<input name="max_sequence_length" type="number" value="2048" min="1"></label>
+              <label>Learning rate<input name="learning_rate" type="number" value="0.0002" step="0.00001"></label>
+              <label>LoRA rank<input name="lora_rank" type="number" value="16" min="1"></label>
+            </div>
+            <div class="actions"><button type="button" data-config-action="/api/plans/training">Review plan</button><button type="button" class="danger" data-config-action="/api/run/training">Run training</button></div>
+          </form>
+        </section>
+
+        <section class="view" id="convert">
+          <div class="section-intro"><div><p class="eyebrow">LITERT EXPORT</p><h2>Convert for edge inference</h2><p>Configure prefill, cache, and quantization before launching the isolated exporter.</p></div></div>
+          <form class="panel config-form" id="conversion-form">
+            <div class="form-grid">
+              <label>Source model<input name="source" placeholder="artifacts/merged-model" required></label>
+              <label>Output directory<input name="output" placeholder="artifacts/litert-export" required></label>
+              <label>Quantization<select name="quantization"><option value="dynamic_int8">Dynamic int8</option><option value="weight_only_int8">Weight-only int8</option><option value="none">Float baseline</option><option value="dynamic_int4">Dynamic int4 · experimental</option><option value="weight_only_int4">Weight-only int4 · experimental</option><option value="static_int8" disabled>Static int8 · separate calibration pipeline</option></select></label>
+              <label>Prefill lengths<input name="prefill_lengths" value="128,512"></label>
+              <label>KV cache length<input name="cache_length" type="number" value="2048" min="1"></label>
+              <label>Calibration dataset<input name="representative_dataset" placeholder="Reserved for the separate static-int8 workflow" disabled></label>
+            </div>
+            <div class="actions"><button type="button" data-config-action="/api/plans/conversion">Review plan</button><button type="button" class="danger" data-config-action="/api/run/conversion">Run conversion</button></div>
+          </form>
+          <form class="panel api-form top-gap" data-endpoint="/api/actions/merge-adapter">
+            <div class="panel-head"><h3>Merge a PEFT adapter</h3></div>
+            <div class="form-grid"><label>Base model<input name="base_model" required></label><label>Adapter<input name="adapter" required></label><label>Output<input name="output" required></label></div>
+            <button>Merge to SafeTensors</button>
+          </form>
+        </section>
+
+        <section class="view" id="validate">
+          <div class="section-intro"><div><p class="eyebrow">QUALITY GATES</p><h2>Reference and runtime parity</h2><p>Capture the PyTorch baseline, then compare deterministic LiteRT-LM generation.</p></div></div>
+          <div class="grid two">
+            <form class="panel api-form" data-endpoint="/api/actions/capture-reference">
+              <h3>Capture reference</h3>
+              <label>Model<input name="model" required></label><label>Adapter (optional)<input name="adapter"></label><label>Prompts JSON<input name="prompts" required></label><label>Output report<input name="output" required></label>
+              <div class="inline"><label>Top-k<input name="top_k" type="number" value="8"></label><label>New tokens<input name="max_new_tokens" type="number" value="8"></label></div>
+              <button>Capture PyTorch baseline</button>
+            </form>
+            <form class="panel api-form" data-endpoint="/api/actions/validate-litert">
+              <h3>Validate LiteRT tokens</h3>
+              <label>LiteRT-LM model<input name="model" required></label><label>Reference report<input name="reference" required></label><label>Prompts JSON<input name="prompts" required></label><label>Output report<input name="output" required></label>
+              <button>Run parity check</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="view" id="deploy">
+          <div class="section-intro"><div><p class="eyebrow">DEPLOYMENT QUALITY</p><h2>Benchmark and device readiness</h2><p>Measure LiteRT-LM performance, detect connected Android hardware, and retain a compatibility history.</p></div><button id="reload-deployment">Refresh devices</button></div>
+          <div class="grid two">
+            <form class="panel api-form" data-endpoint="/api/actions/benchmark-litert">
+              <h3>Reproducible benchmark</h3>
+              <label>LiteRT-LM model<input name="model" required></label><label>Prompts JSON<input name="prompts" required></label><label>Output report<input name="output" placeholder="reports/benchmark.json" required></label>
+              <div class="inline"><label>Warmups<input name="warmup_iterations" type="number" value="1" min="0"></label><label>Iterations<input name="measured_iterations" type="number" value="3" min="1"></label><label>Output tokens<input name="max_output_tokens" type="number" value="16" min="1"></label></div>
+              <button>Run CPU benchmark</button>
+            </form>
+            <article class="panel">
+              <div class="panel-head"><h3>Android devices</h3><span class="status" id="adb-status">Checking</span></div>
+              <div id="android-devices"><p class="empty">Looking for Android platform-tools…</p></div>
+            </article>
+          </div>
+          <div class="panel top-gap"><div class="panel-head"><h3>Compatibility history</h3><button id="reload-compatibility">Reload</button></div><div class="jobs-list" id="compatibility-list"><p class="empty">No results recorded yet.</p></div></div>
+        </section>
+
+        <section class="view" id="artifacts">
+          <div class="section-intro"><div><p class="eyebrow">RELEASES</p><h2>Package and verify</h2><p>Create deterministic archives and verify every byte before distribution.</p></div></div>
+          <div class="grid two">
+            <form class="panel api-form" data-endpoint="/api/actions/package">
+              <h3>Create release bundle</h3><label>Artifact directory<input name="artifact_directory" required></label><label>Reports, comma-separated<input name="reports"></label><label>Output bundle<input name="output" placeholder="releases/model.litertstudio" required></label><button>Package artifact</button>
+            </form>
+            <form class="panel api-form" data-endpoint="/api/actions/verify-bundle">
+              <h3>Verify release bundle</h3><label>Bundle path<input name="bundle" required></label><button>Verify checksums</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="view" id="jobs">
+          <div class="section-intro"><div><p class="eyebrow">LOCAL QUEUE</p><h2>Job history</h2><p>Training and conversion state survives browser refreshes.</p></div><button id="reload-jobs">Reload</button></div>
+          <div class="panel jobs-list" id="jobs-list"><p class="empty">No jobs yet.</p></div>
+        </section>
+      </main>
+    </div>
+    <dialog id="result-dialog"><div class="dialog-head"><div><p class="eyebrow">OPERATION RESULT</p><h3 id="result-title">Complete</h3></div><button id="close-dialog" aria-label="Close">×</button></div><pre id="result"></pre></dialog>
+    <div id="toast" role="status"></div>
+    <script src="/assets/studio.js"></script>
+  </body>
+</html>

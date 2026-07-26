@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://litert-studio.dev/schemas/training-config.schema.json",
+  "title": "LiteRT Studio training configuration",
+  "type": "object",
+  "required": ["schema_version", "kind", "base_model", "dataset", "output"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "kind": {"const": "training"},
+    "name": {"type": "string", "minLength": 1},
+    "base_model": {"type": "string", "minLength": 1},
+    "dataset": {"type": "string", "minLength": 1},
+    "eval_dataset": {"type": "string", "minLength": 1},
+    "validation_split": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+    "validation_sample_size": {"type": "integer", "minimum": 1},
+    "output": {"type": "string", "minLength": 1},
+    "method": {"enum": ["lora", "qlora", "full"]},
+    "epochs": {"type": "number", "exclusiveMinimum": 0},
+    "batch_size": {"type": "integer", "minimum": 1},
+    "gradient_accumulation_steps": {"type": "integer", "minimum": 1},
+    "max_sequence_length": {"type": "integer", "minimum": 1},
+    "learning_rate": {"type": "number", "exclusiveMinimum": 0},
+    "precision": {"enum": ["fp32", "fp16", "bf16"]},
+    "seed": {"type": "integer"},
+    "max_steps": {"type": "integer", "minimum": -1},
+    "logging_steps": {"type": "integer", "minimum": 1},
+    "save_steps": {"type": "integer", "minimum": 1},
+    "resume_from_checkpoint": {"type": "boolean"},
+    "merge_adapter": {"type": "boolean"},
+    "lora": {
+      "type": "object",
+      "properties": {
+        "rank": {"type": "integer", "minimum": 1},
+        "alpha": {"type": "integer", "minimum": 1},
+        "dropout": {"type": "number", "minimum": 0, "maximum": 1},
+        "target_modules": {
+          "oneOf": [
+            {"const": "auto"},
+            {"type": "array", "items": {"type": "string"}, "minItems": 1}
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "litert-studio"
+version = "0.1.0"
+description = "Local-first workflows for LLM fine-tuning and SafeTensors-to-LiteRT conversion"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "LiteRT Studio contributors" }]
+dependencies = []
+
+[project.optional-dependencies]
+api = ["fastapi>=0.115", "uvicorn>=0.30"]
+dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.11"]
+training = [
+  "torch>=2.4",
+  "transformers>=4.57,<5",
+  "peft>=0.12",
+  "safetensors>=0.4",
+  "accelerate>=1.0",
+  "huggingface-hub>=0.26"
+]
+qlora = ["bitsandbytes>=0.45"]
+conversion = [
+  "safetensors>=0.4",
+  "transformers>=4.57,<6",
+  "litert-torch>=0.9.1; platform_system == 'Linux'"
+]
+classic-conversion = ["tensorflow>=2.17"]
+runtime = ["litert-lm==0.14.0; platform_system == 'Linux'"]
+
+[project.scripts]
+litert-studio = "litert_studio.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/litert_studio"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+schemas = "share/litert-studio/schemas"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["work"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

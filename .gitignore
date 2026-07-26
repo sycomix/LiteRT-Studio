@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+build/
+*.egg-info/
+.litert-studio/
+runs/
+artifacts/
+models/
+datasets/
+node_modules/
+.env
+work/

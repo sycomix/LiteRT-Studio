@@ -1,0 +1,10 @@
+{
+  "key": "session_progress",
+  "title": "Session progress - PyTorch DLL fix complete",
+  "content": "- Bug: `/api/system` endpoint returned 500 Internal Server Error on Windows when PyTorch's DLL init failed (WinError 1114)\n- Root cause: `import torch` raises `OSError`, not `ImportError`, but only `except ImportError:` was catching it\n- Fix applied: Changed `except ImportError:` to `except (ImportError, OSError):` at line 112 of src/litert_studio/server/app.py\n- Verified: App creates successfully with all 30 routes registered\n- Other torch imports in reference.py, merge.py, transformers_backend.py are function-level inside job workers — appropriate behavior since those jobs require torch to actually run\n\n---\n**8/5/2026, 11:03:25 PM | Created via MWX**",
+  "tags": [],
+  "created_at": "2026-08-06T04:03:25.074Z",
+  "updated_at": "2026-08-06T04:03:25.074Z",
+  "lines": 8,
+  "chars": 660
+}

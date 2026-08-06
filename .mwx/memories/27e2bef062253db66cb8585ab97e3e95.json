@@ -1,0 +1,10 @@
+{
+  "key": "bug_fix_pytorch_dll_oerror",
+  "title": "PyTorch DLL init failure fix",
+  "content": "- Bug: `/api/system` endpoint returned 500 on Windows when `import torch` raised OSError (WinError 1114 — DLL init failure) instead of ImportError\n- Fix: Changed `except ImportError:` to `except (ImportError, OSError):` at line 112 of src/litert_studio/server/app.py\n- Impact: Endpoint now gracefully degrades to CPU-only info when PyTorch DLLs fail to load (missing MSVC redistributable, CUDA toolkit mismatch, or corrupted install)\n- Other torch imports in reference.py, merge.py, transformers_backend.py are function-level imports inside job workers — they need torch to actually run, so their failures are appropriate\n\n---\n**8/5/2026, 11:02:29 PM | Created via MWX**",
+  "tags": [],
+  "created_at": "2026-08-06T04:02:29.211Z",
+  "updated_at": "2026-08-06T04:02:29.211Z",
+  "lines": 7,
+  "chars": 670
+}

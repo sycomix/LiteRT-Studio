@@ -109,7 +109,7 @@ def create_app(workspace: Path | None = None):  # type: ignore[no-untyped-def]
                     for index in range(torch.cuda.device_count())
                 ],
             }
-        except ImportError:
+        except (ImportError, OSError):
             pass
         return {
             "platform": platform.system().lower(),

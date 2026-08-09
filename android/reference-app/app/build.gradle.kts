@@ -32,7 +32,7 @@ android {
 dependencies {
     implementation("androidx.activity:activity-ktx:1.13.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
     implementation("com.google.android.material:material:1.14.0")
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
 }

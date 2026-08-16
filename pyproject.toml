@@ -30,7 +30,7 @@ conversion = [
   "litert-torch>=0.9.1; platform_system == 'Linux'"
 ]
 classic-conversion = ["tensorflow>=2.17"]
-runtime = ["litert-lm==0.14.0; platform_system == 'Linux'"]
+runtime = ["litert-lm==0.16.0; platform_system == 'Linux'"]
 
 [project.scripts]
 litert-studio = "litert_studio.cli:main"

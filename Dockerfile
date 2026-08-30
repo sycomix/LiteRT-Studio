@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1 — Builder: install dependencies into an isolated layer
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim-bookworm AS builder
+FROM nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04 AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -26,8 +26,8 @@ RUN python -m venv /opt/venv && . /opt/venv/bin/activate \
  && pip install --upgrade pip setuptools wheel \
  # Core API + dev tools (always needed)
  && pip install ".[api,dev]" \
- # Training stack (torch CPU only to avoid GPU dependency)
- && pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
+ # Training stack — CUDA version of PyTorch (auto-detects CUDA toolkit)
+ && pip install torch torchvision torchaudio \
  && pip install "transformers>=4.57,<6" "peft>=0.12" "safetensors>=0.4" "accelerate>=1.0" "huggingface-hub>=0.26"\
  # LiteRT runtime (Linux-only, ignore failures on non-Linux)
  && pip install --ignore-installed "litert-lm==0.14.0; platform_system == 'Linux'" || true \
@@ -39,7 +39,7 @@ RUN python -m venv /opt/venv && . /opt/venv/bin/activate \
 # ---------------------------------------------------------------------------
 # Stage 2 — Runtime: minimal image with only what's needed
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim-bookworm AS runtime
+FROM nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

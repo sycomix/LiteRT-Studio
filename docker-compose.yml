@@ -3,15 +3,9 @@ version: "3.9"
 # ---------------------------------------------------------------------------
 # LiteRT Studio — Docker Compose configurations
 #
-# Profiles:
-#   dev        - Development mode with hot reload & volume mounts (default)
-#   gpu        - Adds NVIDIA GPU support for training/quantization
-#   production - Single container with mounted workspace volumes
-#
 # Usage:
-#   docker compose --profile dev up          # development
-#   docker compose --profile gpu up           # GPU-enabled training
-#   docker compose --profile production up    # production deployment
+#   docker compose up                   # development (GPU-aware)
+#   docker compose up --build           # build and start
 # ---------------------------------------------------------------------------
 
 services:
@@ -20,12 +14,14 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: litert-studio
+    runtime: nvidia                   # NVIDIA GPU runtime required for CUDA
     ports:
       - "${PORT:-7860}:7860"
     volumes:
-      # Mount workspace for live code + data sync in dev mode
+      # Mount workspace for live code + data sync
       - ./workspace:/app/workspace:delegated
-      - ./:/src/litert_studio_source:ro,z     # source overlay (dev only)
+      # Source overlay for hot reload during development
+      - ./:/src/litert_studio_source:ro,z
     environment:
       - PYTHONPATH=/src/litert_studio_source
       - PORT=7860
@@ -42,12 +38,12 @@ services:
       retries: 3
 
   # -----------------------------------------------------------------------
-  # GPU-enabled training worker (optional, use --profile gpu)
+  # GPU-enabled training worker — inherits NVIDIA runtime from parent service
   # -----------------------------------------------------------------------
   training-worker:
+    extends: litert-studio
     image: litert-studio:${TAG:-latest}
     container_name: litert-studio-training
-    profiles: ["gpu"]
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - HF_TOKEN=${HF_TOKEN:-}
@@ -56,13 +52,6 @@ services:
       - ./workspace:/app/workspace:delegated
       - ./models:/app/models:ro,z        # cached models volume
       - ./datasets:/app/datasets:rw,z     # dataset storage
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1                    # set to 0 for all GPUs
-              capabilities: [gpu]
     restart: unless-stopped
 
 # ---------------------------------------------------------------------------

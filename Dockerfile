@@ -14,7 +14,7 @@ WORKDIR /workspace
 
 # Install build-time system deps (Rust for bitsandbytes, etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential curl git ca-certificates pkg-config \
+        build-essential curl git ca-certificates pkg-config gcc g++ make rustc cargo \
         && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency manifests first for layer caching
@@ -24,8 +24,17 @@ COPY src/litert_studio/ src/litert_studio/
 # Install Python dependencies into a virtual environment
 RUN python -m venv /opt/venv && . /opt/venv/bin/activate \
  && pip install --upgrade pip setuptools wheel \
- && pip install --no-compile ".[api,training,conversion,runtime]" \
- && pip install --no-compile ".[dev]"
+ # Core API + dev tools (always needed)
+ && pip install ".[api,dev]" \
+ # Training stack (torch CPU only to avoid GPU dependency)
+ && pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
+ && pip install "transformers>=4.57,<6" "peft>=0.12" "safetensors>=0.4" "accelerate>=1.0" "huggingface-hub>=0.26"\
+ # LiteRT runtime (Linux-only, ignore failures on non-Linux)
+ && pip install --ignore-installed "litert-lm==0.14.0; platform_system == 'Linux'" || true \
+ # SafeTensors conversion deps
+ && pip install "safetensors>=0.4" "transformers>=4.57,<6"\
+ # Classic TF conversion (optional, install silently if fails)
+ && pip install --quiet "tensorflow>=2.17" || true
 
 # ---------------------------------------------------------------------------
 # Stage 2 — Runtime: minimal image with only what's needed

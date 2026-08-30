@@ -74,9 +74,28 @@
         </section>
 
         <section class="view" id="data">
-          <div class="section-intro"><div><p class="eyebrow">DATA QUALITY</p><h2>Validate before tokenization</h2><p>Fingerprint JSONL, count records, and catch malformed text or chat examples.</p></div></div>
+          <div class="section-intro"><div><p class="eyebrow">DATA QUALITY</p><h2>Upload and validate training data</h2><p>Import JSON, JSONL/NDJSON, or plain text. Files stay local and are fingerprinted before training.</p></div></div>
+          <form class="panel narrow" id="dataset-upload-form">
+            <div class="panel-head"><h3>Upload custom dataset</h3><span class="status good">Local only</span></div>
+            <label>Training data file<input id="dataset-file" type="file" accept=".json,.jsonl,.ndjson,.txt,.text,application/json,application/x-ndjson,text/plain" required></label>
+            <p class="hint">JSON may be an array, one training object, or an object containing <code>records</code>, <code>data</code>, or <code>train</code>. Records support <code>text</code>, chat <code>messages</code>, Alpaca <code>instruction/input/output</code>, or <code>prompt/completion</code>.</p>
+            <details class="field-mapping">
+              <summary>Custom field mapping</summary>
+              <p class="hint">Leave blank for automatic detection. Define exactly one shape below. Dotted paths such as <code>payload.answer</code> are supported.</p>
+              <div class="form-grid">
+                <label>Text field<input name="text_field" placeholder="content"></label>
+                <label>Messages field<input name="messages_field" placeholder="conversation.turns"></label>
+                <label>Instruction field<input name="instruction_field" placeholder="question"></label>
+                <label>Input field (optional)<input name="input_field" placeholder="context"></label>
+                <label>Output field<input name="output_field" placeholder="answer"></label>
+                <label>Prompt field<input name="prompt_field" placeholder="prompt"></label>
+                <label>Completion field<input name="completion_field" placeholder="response"></label>
+              </div>
+            </details>
+            <button>Upload and inspect</button>
+          </form>
           <form class="panel api-form narrow" data-endpoint="/api/datasets/inspect">
-            <label>Dataset path<input name="path" placeholder="datasets/train.jsonl" required></label>
+            <label>Dataset path<input id="dataset-inspect-path" name="path" placeholder="datasets/train.jsonl" required></label>
             <button>Inspect dataset</button>
           </form>
         </section>
@@ -86,7 +105,7 @@
           <form class="panel config-form" id="training-form">
             <div class="form-grid">
               <label>Base model<input name="base_model" placeholder="models/gemma" required></label>
-              <label>Training dataset<input name="dataset" placeholder="datasets/train.jsonl" required></label>
+              <label>Training dataset<input id="training-dataset-path" name="dataset" placeholder="datasets/train.jsonl" required></label>
               <label>Output directory<input name="output" placeholder="artifacts/my-adapter" required></label>
               <label>Method<select name="method"><option>lora</option><option>qlora</option><option>full</option></select></label>
               <label>Validation split<input name="validation_split" type="number" value="0.05" min="0.001" max="0.9" step="0.01"></label>

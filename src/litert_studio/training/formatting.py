@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
 import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
 from litert_studio.core.errors import ConfigurationError
+from litert_studio.training.datasets import iter_dataset_records
 
 
 class TokenizerLike(Protocol):
@@ -74,47 +74,57 @@ def split_formatted_records(
 
 def load_formatted_records(path: Path, tokenizer: TokenizerLike) -> list[str]:
     texts: list[str] = []
-    with path.open(encoding="utf-8") as handle:
-        for line_number, line in enumerate(handle, 1):
-            if not line.strip():
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError as exc:
-                raise ConfigurationError(f"Invalid JSONL at {path}:{line_number}: {exc}") from exc
-            if not isinstance(record, dict):
-                raise ConfigurationError(f"Record {line_number} must be an object")
-            if isinstance(record.get("text"), str) and record["text"]:
-                texts.append(record["text"])
-                continue
-            messages = record.get("messages")
-            if not isinstance(messages, list) or not messages:
+    for line_number, record in iter_dataset_records(path):
+        if isinstance(record.get("text"), str) and record["text"]:
+            texts.append(record["text"])
+            continue
+        if isinstance(record.get("instruction"), str) and isinstance(record.get("output"), str):
+            instruction = record["instruction"].strip()
+            output = record["output"].strip()
+            input_text = record.get("input", "")
+            if not isinstance(input_text, str):
+                raise ConfigurationError(f"Record {line_number} has a non-text 'input'")
+            if not instruction or not output:
                 raise ConfigurationError(
-                    f"Record {line_number} must contain non-empty 'text' or 'messages'"
+                    f"Record {line_number} must contain non-empty 'instruction' and 'output'"
                 )
-            normalized: list[dict[str, str]] = []
-            for message in messages:
-                if (
-                    not isinstance(message, dict)
-                    or not isinstance(message.get("role"), str)
-                    or not isinstance(message.get("content"), str)
-                ):
-                    raise ConfigurationError(
-                        f"Record {line_number} contains an invalid chat message"
-                    )
-                normalized.append({"role": message["role"], "content": message["content"]})
-            try:
-                texts.append(
-                    tokenizer.apply_chat_template(
-                        normalized,
-                        tokenize=False,
-                        add_generation_prompt=False,
-                    )
-                )
-            except ValueError as exc:
+            sections = [f"### Instruction:\n{instruction}"]
+            if input_text.strip():
+                sections.append(f"### Input:\n{input_text.strip()}")
+            sections.append(f"### Response:\n{output}")
+            texts.append("\n\n".join(sections))
+            continue
+        if isinstance(record.get("prompt"), str):
+            completion = record.get("completion", record.get("response"))
+            if isinstance(completion, str) and record["prompt"].strip() and completion.strip():
+                texts.append(f"{record['prompt'].rstrip()}\n{completion.lstrip()}")
+                continue
+        messages = record.get("messages")
+        if not isinstance(messages, list) or not messages:
+            raise ConfigurationError(
+                f"Record {line_number} must contain non-empty 'text' or 'messages'"
+            )
+        normalized: list[dict[str, str]] = []
+        for message in messages:
+            if (
+                not isinstance(message, dict)
+                or not isinstance(message.get("role"), str)
+                or not isinstance(message.get("content"), str)
+            ):
                 raise ConfigurationError(
-                    f"Record {line_number} requires a tokenizer chat template: {exc}"
-                ) from exc
+                    f"Record {line_number} contains an invalid chat message"
+                )
+            normalized.append({"role": message["role"], "content": message["content"]})
+        try:
+            texts.append(
+                tokenizer.apply_chat_template(
+                    normalized, tokenize=False, add_generation_prompt=False
+                )
+            )
+        except ValueError as exc:
+            raise ConfigurationError(
+                f"Record {line_number} requires a tokenizer chat template: {exc}"
+            ) from exc
     if not texts:
         raise ConfigurationError(f"Dataset contains no usable records: {path}")
     return texts

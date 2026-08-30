@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import platform
+import re
 import sys
 from dataclasses import asdict
 from importlib.metadata import PackageNotFoundError, version
@@ -27,18 +29,23 @@ from litert_studio.core.packaging import create_bundle, verify_bundle
 from litert_studio.core.process import ProcessHandle, SubprocessLauncher
 from litert_studio.core.repository import SqliteJobRepository
 from litert_studio.training import build_training_plan
-from litert_studio.training.datasets import inspect_jsonl
+from litert_studio.training.datasets import (
+    SUPPORTED_DATASET_EXTENSIONS,
+    inspect_jsonl,
+    normalize_dataset_fields,
+)
 from litert_studio.training.merge import merge_adapter
 from litert_studio.training.recipe import recipe_from_config
 
 
 def create_app(workspace: Path | None = None):  # type: ignore[no-untyped-def]
     try:
-        from fastapi import FastAPI, HTTPException
+        from fastapi import FastAPI, HTTPException, Request
         from fastapi.responses import FileResponse
         from fastapi.staticfiles import StaticFiles
     except ImportError as exc:
         raise RuntimeError("Install LiteRT Studio with the 'api' extra") from exc
+    globals()["Request"] = Request
 
     root = (workspace or Path.cwd()).resolve()
     state = root / ".litert-studio"
@@ -167,6 +174,74 @@ def create_app(workspace: Path | None = None):  # type: ignore[no-untyped-def]
     def inspect_dataset(payload: dict[str, Any]) -> dict[str, Any]:
         dataset = authorized(str(payload.get("path", "")), must_exist=True)
         return inspect_jsonl(dataset).to_dict()
+
+    @app.post("/api/datasets/upload")
+    async def upload_dataset(
+        request: Request,
+        filename: str = "",
+        text_field: str = "",
+        messages_field: str = "",
+        instruction_field: str = "",
+        input_field: str = "",
+        output_field: str = "",
+        prompt_field: str = "",
+        completion_field: str = "",
+    ) -> dict[str, Any]:
+        safe_name = Path(filename).name
+        suffix = Path(safe_name).suffix.lower()
+        if not safe_name or suffix not in SUPPORTED_DATASET_EXTENSIONS:
+            supported = ", ".join(SUPPORTED_DATASET_EXTENSIONS)
+            raise HTTPException(422, f"Choose a supported dataset file: {supported}")
+        upload_dir = root / "datasets" / "uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        temporary = upload_dir / f".{os.getpid()}-{id(request)}.uploading"
+        digest = hashlib.sha256()
+        size = 0
+        try:
+            with temporary.open("wb") as handle:
+                async for chunk in request.stream():
+                    size += len(chunk)
+                    if size > 1024 * 1024 * 1024:
+                        raise HTTPException(413, "Dataset upload exceeds the 1 GiB limit")
+                    digest.update(chunk)
+                    handle.write(chunk)
+            stem = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(safe_name).stem).strip(".-")
+            destination = upload_dir / f"{stem or 'dataset'}-{digest.hexdigest()[:12]}{suffix}"
+            temporary.replace(destination)
+            mapping = {
+                target: field.strip()
+                for target, field in {
+                    "text": text_field,
+                    "messages": messages_field,
+                    "instruction": instruction_field,
+                    "input": input_field,
+                    "output": output_field,
+                    "prompt": prompt_field,
+                    "completion": completion_field,
+                }.items()
+                if field.strip()
+            }
+            training_path = destination
+            if mapping:
+                training_path = upload_dir / (
+                    f"{stem or 'dataset'}-{digest.hexdigest()[:12]}-mapped.jsonl"
+                )
+                normalize_dataset_fields(destination, training_path, mapping)
+            inspection = inspect_jsonl(training_path)
+        except Exception:
+            temporary.unlink(missing_ok=True)
+            if "training_path" in locals() and training_path != destination:
+                training_path.unlink(missing_ok=True)
+            if "destination" in locals():
+                destination.unlink(missing_ok=True)
+            raise
+        return {
+            "path": training_path.relative_to(root).as_posix(),
+            "source_path": destination.relative_to(root).as_posix(),
+            "filename": safe_name,
+            "mapping": mapping,
+            "inspection": inspection.to_dict(),
+        }
 
     @app.post("/api/plans/training")
     def training_plan(payload: dict[str, Any]) -> dict[str, Any]:

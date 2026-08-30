@@ -48,6 +48,48 @@ def test_studio_reports_system_capabilities(tmp_path: Path) -> None:
     assert "accelerator" in response.json()
 
 
+def test_dataset_upload_is_validated_and_saved_for_training(tmp_path: Path) -> None:
+    client = TestClient(create_app(tmp_path))
+    response = client.post(
+        "/api/datasets/upload?filename=my%20custom.json",
+        content=b'[{"text":"hello"},{"text":"world"}]',
+        headers={"Content-Type": "application/octet-stream"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["path"].startswith("datasets/uploads/my-custom-")
+    assert body["inspection"]["records"] == 2
+    assert (tmp_path / body["path"]).is_file()
+
+
+def test_dataset_upload_rejects_incompatible_or_malformed_files(tmp_path: Path) -> None:
+    client = TestClient(create_app(tmp_path))
+
+    unsupported = client.post("/api/datasets/upload?filename=data.csv", content=b"text\nhello")
+    malformed = client.post("/api/datasets/upload?filename=data.json", content=b"not-json")
+
+    assert unsupported.status_code == 422
+    assert malformed.status_code == 422
+    assert not list((tmp_path / "datasets" / "uploads").glob("*.json"))
+
+
+def test_dataset_upload_accepts_user_defined_fields(tmp_path: Path) -> None:
+    client = TestClient(create_app(tmp_path))
+    response = client.post(
+        "/api/datasets/upload?filename=custom.json&instruction_field=task"
+        "&input_field=source.context&output_field=answer",
+        content=b'[{"task":"Explain","source":{"context":"this"},"answer":"Done"}]',
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["path"].endswith("-mapped.jsonl")
+    assert body["source_path"].endswith(".json")
+    assert body["mapping"]["output"] == "answer"
+    assert body["inspection"]["formats"] == ["instruction"]
+
+
 def test_training_job_runs_in_logged_subprocess(
     model_dir: Path,
     dataset: Path,

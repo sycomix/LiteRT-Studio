@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
 import sys
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
+from functools import lru_cache
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
@@ -64,7 +67,11 @@ def preflight(recipe: TrainingRecipe) -> PreflightReport:
     missing = [name for name, found in packages.items() if found is None]
     if missing:
         issues.append(f"Missing training packages: {', '.join(missing)}")
-    accelerator = _accelerator()
+    accelerator = "unavailable"
+    if packages.get("torch") is not None:
+        accelerator, runtime_issue = _probe_torch_runtime()
+        if runtime_issue is not None:
+            issues.append(runtime_issue)
     return PreflightReport(
         ready=not issues,
         request_id=recipe.request_id,
@@ -131,10 +138,45 @@ def _package_version(name: str) -> str | None:
         return None
 
 
-def _accelerator() -> str:
-    # Importing torch may initialize drivers and stall a lightweight validation
-    # request. Hardware probing belongs in the isolated execution process.
-    return "not-probed"
+@lru_cache(maxsize=1)
+def _probe_torch_runtime() -> tuple[str, str | None]:
+    """Import PyTorch out-of-process so a broken native runtime cannot crash Studio."""
+    script = (
+        "import json, torch; "
+        "print(json.dumps({'cuda': torch.cuda.is_available(), "
+        "'device': torch.cuda.get_device_name(0) if torch.cuda.is_available() else None, "
+        "'torch': torch.__version__, 'cuda_runtime': torch.version.cuda}))"
+    )
+    environment = dict(os.environ)
+    environment.setdefault("USE_TF", "0")
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+            env=environment,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return "unavailable", f"PyTorch runtime probe failed: {exc}"
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip().splitlines()
+        final_line = detail[-1] if detail else f"process exited with status {result.returncode}"
+        if "c10.dll" in (result.stderr + result.stdout):
+            final_line = (
+                "PyTorch cannot load c10.dll or one of its native dependencies. "
+                "Reinstall an official Windows CPU/CUDA wheel and verify the Microsoft "
+                "Visual C++ runtime."
+            )
+        return "unavailable", final_line
+    try:
+        details = json.loads(result.stdout.strip().splitlines()[-1])
+    except (IndexError, json.JSONDecodeError):
+        return "unavailable", "PyTorch runtime probe returned an unreadable result"
+    if details.get("cuda"):
+        return f"cuda: {details.get('device') or 'available'}", None
+    return "cpu", None
 
 
 if __name__ == "__main__":

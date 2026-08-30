@@ -105,6 +105,31 @@ async function loadDeployment() {
 }
 
 function escapeHtml(value) { const node=document.createElement("span"); node.textContent=value; return node.innerHTML; }
+async function uploadDataset(event) {
+  event.preventDefault();
+  const file = $("#dataset-file").files[0];
+  const button = $("button", event.currentTarget);
+  if (!file) return;
+  button.disabled = true; button.dataset.label = button.textContent; button.textContent = "Uploading…";
+  try {
+    const query = new URLSearchParams({filename:file.name});
+    for (const [key, value] of new FormData(event.currentTarget)) {
+      if (key.endsWith("_field") && String(value).trim()) query.set(key, String(value).trim());
+    }
+    const response = await fetch(`/api/datasets/upload?${query}`, {
+      method: "POST", headers: {"Content-Type": "application/octet-stream"}, body: file
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.detail || `Upload failed (${response.status})`);
+    $("#dataset-inspect-path").value = body.path;
+    $("#training-dataset-path").value = body.path;
+    showResult(body, "Dataset ready for training");
+  } catch (error) {
+    showResult({error:error.message}, "Upload needs attention");
+  } finally {
+    button.disabled = false; button.textContent = button.dataset.label;
+  }
+}
 $$("[data-view]").forEach(b => b.onclick = () => showView(b.dataset.view));
 $$("[data-go]").forEach(b => b.onclick = () => showView(b.dataset.go));
 $$(".api-form").forEach(form => form.onsubmit = event => { event.preventDefault(); request(form.dataset.endpoint, formPayload(form), $("button", form)); });
@@ -118,4 +143,5 @@ $("#refresh").onclick = loadStatus;
 $("#reload-jobs").onclick = loadJobs;
 $("#reload-deployment").onclick = loadDeployment;
 $("#reload-compatibility").onclick = loadDeployment;
+$("#dataset-upload-form").onsubmit = uploadDataset;
 loadStatus(); loadJobs(); setInterval(loadJobs, 5000);

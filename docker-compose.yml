@@ -1,0 +1,74 @@
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# LiteRT Studio — Docker Compose configurations
+#
+# Profiles:
+#   dev        - Development mode with hot reload & volume mounts (default)
+#   gpu        - Adds NVIDIA GPU support for training/quantization
+#   production - Single container with mounted workspace volumes
+#
+# Usage:
+#   docker compose --profile dev up          # development
+#   docker compose --profile gpu up           # GPU-enabled training
+#   docker compose --profile production up    # production deployment
+# ---------------------------------------------------------------------------
+
+services:
+  litert-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: litert-studio
+    ports:
+      - "${PORT:-7860}:7860"
+    volumes:
+      # Mount workspace for live code + data sync in dev mode
+      - ./workspace:/app/workspace:delegated
+      - ./:/src/litert_studio_source:ro,z     # source overlay (dev only)
+    environment:
+      - PYTHONPATH=/src/litert_studio_source
+      - PORT=7860
+      - WORKSPACE_DIR=/app/workspace
+      # Optional: Hugging Face credentials for model downloads
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HF_HUB_ENABLE_HF_TRANSFER=${HF_HUB_ENABLE_HF_TRANSFER:-0}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7860/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # -----------------------------------------------------------------------
+  # GPU-enabled training worker (optional, use --profile gpu)
+  # -----------------------------------------------------------------------
+  training-worker:
+    image: litert-studio:${TAG:-latest}
+    container_name: litert-studio-training
+    profiles: ["gpu"]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HF_HUB_ENABLE_HF_TRANSFER=${HF_HUB_ENABLE_HF_TRANSFER:-0}
+    volumes:
+      - ./workspace:/app/workspace:delegated
+      - ./models:/app/models:ro,z        # cached models volume
+      - ./datasets:/app/datasets:rw,z     # dataset storage
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1                    # set to 0 for all GPUs
+              capabilities: [gpu]
+    restart: unless-stopped
+
+# ---------------------------------------------------------------------------
+# Named volumes for persistent data
+# ---------------------------------------------------------------------------
+volumes:
+  litert-workspace:
+    name: litert-studio-workspace
+    driver: local
